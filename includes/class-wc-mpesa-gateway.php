@@ -8,6 +8,10 @@ class WC_MPesa_Gateway extends WC_Payment_Gateway {
     public function __construct() {
         $this->id                 = 'mpesa';
         $this->icon               = WC_MPESA_PLUGIN_URL . 'assets/images/mpesa-logo.png';
+
+        // Prevent broken icons from impacting front-end: if image missing, Woo will still show gateway name.
+        // (404 in browser console is expected when the file isn't present in /assets/images)
+
         $this->has_fields         = true;
         $this->method_title       = __('M-PESA', 'wc-mpesa-gateway');
         $this->method_description = __('Accept payments via M-PESA STK Push', 'wc-mpesa-gateway');
@@ -165,7 +169,13 @@ class WC_MPesa_Gateway extends WC_Payment_Gateway {
         if (empty($_POST['nonce'])) {
             wp_send_json_error(['message' => 'Missing nonce']);
         }
-        check_ajax_referer('wc_mpesa_nonce', 'nonce');
+
+        // Avoid HTTP 400 on invalid nonce; return JSON so we can see the real issue.
+        $nonce = sanitize_text_field(wp_unslash($_POST['nonce']));
+        if (!wp_verify_nonce($nonce, 'wc_mpesa_nonce')) {
+            wp_send_json_error(['message' => 'Invalid nonce']);
+        }
+
 
         $order_id = isset($_POST['order_id']) ? intval($_POST['order_id']) : 0;
         $phone    = isset($_POST['phone']) ? sanitize_text_field($_POST['phone']) : '';
