@@ -161,10 +161,15 @@ class WC_MPesa_Gateway extends WC_Payment_Gateway {
     }
 
     public function ajax_process_payment() {
+        // If nonce is missing/invalid, return a clean JSON error instead of a 400.
+        if (empty($_POST['nonce'])) {
+            wp_send_json_error(['message' => 'Missing nonce']);
+        }
         check_ajax_referer('wc_mpesa_nonce', 'nonce');
 
         $order_id = isset($_POST['order_id']) ? intval($_POST['order_id']) : 0;
         $phone    = isset($_POST['phone']) ? sanitize_text_field($_POST['phone']) : '';
+
 
         if (!$order_id || !$phone) {
             wp_send_json_error(['message' => 'Invalid data']);
